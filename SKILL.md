@@ -1,28 +1,16 @@
 ---
 name: anti-ai-slop-real
-description: Detect and flag AI-generated low-quality or misleading content (slop) with comprehensive pattern catalog and tracking, expanded v3.0.0
-version: \"3.0.0\"
-argument-hint: \"[--clear] [--list] [--scan PATH]\"
+description: Detect and flag AI-generated low-quality or misleading content (slop) in UI and code. Runs a 3-pass scan — quality failures, 80+ catalogued patterns (V/T/C/L/M/P/I/Q/X/A/D/S/R/B/F/DM/H), composition checks — tracks findings in slop-log.json with confidence, severity and auto-fix flags, and applies an 8-stage fix order. Use when auditing a codebase or frontend for generic AI-generated design, reviewing UI output for slop, or when the target is luxury hospitality, fine dining, or a destination venue (activates the H1-H12 domain catalog).
+version: "3.0.0"
+argument-hint: "[--clear] [--list] [--scan PATH]"
 allowed-tools:
   - Read
   - Write
   - Bash
   - Grep
+  - Glob
   - AskUserQuestion
 ---
-
-<!--
-name: anti-ai-slop-real
-description: Detect and flag AI-generated low-quality or misleading content (slop) with comprehensive pattern catalog and tracking, expanded v3.0.0
-version: \"3.0.0\"
-argument-hint: \"[--clear] [--list] [--scan PATH]\"
-allowed-tools:
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - AskUserQuestion
--->
 
 <objective>
 Provide comprehensive functionality to identify, track, and manage AI-generated content that may be low-quality, repetitive, or misleading — commonly referred to as \"AI slop\". This skill helps maintain content quality by detecting slop patterns, tracking them persistently with severity scoring and auto-fix tagging, and offering remediation actions. Extends the 3-pass scan system with new categories (Imagery I2-I6, Motion M4-M8, Copy P5-P9, Accessibility A1-A8, Design-Token D1-D6), severity-based trending scores, and cross-skill debt-integration. Integrates lessons from anti-ui-slop (ritmex-skills), anti-slop (miqdadbadjuber/anti-slop) and best practices from design systems.
@@ -171,6 +159,25 @@ Check for 70+ AI slop patterns across categories:
 - Q7: Tiny body text (below 12px, 12-13px readability risk)
 - Q8: Wide letter spacing on body (tracking above 0.05em)
 
+#### Hospitality / Luxury Domain (applies only when the target is luxury hospitality, fine dining, or a destination venue — do not report outside that scope)
+Forbidden patterns:
+- H1: Card-grid aggregation (rows of identical rounded cards with cropped image header + plain text body)
+- H2: Generic status pills (pill with pulsing green/red dot: "Open Today", "Live", "Active Now")
+- H3: Fake chrome around media (mock window headers, tab strips with close buttons, "LIVE MAP" bars around video/maps)
+- H4: Raw embedded maps (unstyled Google Maps, pastel roads, yellow highways inside a dark palette)
+- H5: Circular icon lists (icon-in-circle beside address/contact/hours rows)
+- H6: Fintech sans pairing (Outfit, Poppins, Inter, DM Sans, Montserrat set against a luxury serif)
+- H7: Hover-gated core content (dish photos, ingredients, pricing hidden behind a hover reveal)
+
+Mandatory design codes (violation = the required treatment is absent):
+- H8: Canvas over card (missing full-bleed backgrounds, hairline borders `1px solid rgba(gold, 0.2)`, asymmetric split viewports; boxed containers instead)
+- H9: Editorial typographic scale (numbers, coordinates, labels not treated as design; missing Roman/serif numerals "01"/"02", tracking 0.2em, small caps)
+- H10: Discreet indicators (heavy VEG/NON-VEG badges instead of 4-6px jewel dots framed in glass discs)
+- H11: Cinematic media integration (background video without calibrated linear + vignette gradient scrims bleeding into the dark palette)
+- H12: Tabular concierge hierarchy (arrival, contact, venue data not presented as key-value dossier: category key left, Cormorant Garamond serif values right)
+
+Detection is source-level; no render required for H1-H7 except H4/H11 overlay verification. H8-H12 are detected as absences — search for the required treatment and report when missing. H-IDs supersede their base-catalog equivalents in this domain (H1>L2/V6/I5, H2>V12/M4/M6, H4>C1/C4, H5>A4/L9, H6>T8/V14, H10>V12, H8>L4, H9 inverse of T5/L5). Report the H-ID, never both — double-firing inflates the score and sends the fixer at the wrong layer. Full heuristics, exemption rules, and report rows: `references/luxury-hospitality-protocol.md`.
+
 ### Pass 3: Composition-Level Checks
 - X1: Motion saturation (many elements enter, float, pulse, wiggle, or bounce)
 - X2: Decorative priority inversion (icon containers, badges, ornaments > message weight)
@@ -194,7 +201,7 @@ Add detected slop to the tracker database (project-local first, legacy fallback)
 <step name=\"review\">
 Show tracked slop items with full detail:
 - List all entries with: ID, file path, pattern ID, confidence, severity (blocker/major/nit), auto_fix (bool), status
-- Group by: confidence level (Confirmed/Probable/Candidate), severity (blocker/major/nit), category (Visual/Typography/Color/Layout/Motion/Copy/Imagery/Quality/Accessibility/Design-Token)
+- Group by: confidence level (Confirmed/Probable/Candidate), severity (blocker/major/nit), category (Visual/Typography/Color/Layout/Motion/Copy/Imagery/Quality/Accessibility/Design-Token/Hospitality-Luxury)
 - Provide options per entry:
   - Mark as reviewed
   - Mark as removed
@@ -209,13 +216,15 @@ Apply fixes to slop-infested content with priority ordering:
 
 ### Fix Order (apply in sequence to prevent cosmetic churn):
 1. **Broken behavior, accessibility, overflow, and readability** (Q1-Q8, C4, L6-L9, M2, A1-A8)
-2. **Information architecture and unsupported content** (X3, P2, I1)
-3. **Repeated page templates, card anatomy, and container depth** (L2, L4, V2, V6)
-4. **Type hierarchy, spacing rhythm, and color roles** (T1-T15, C1-C6, L3, L5)
-5. **Decorative borders, gradients, glows, radii, icons, and motion** (V1-V8, M1-M4)
+2. **Information architecture and unsupported content** (X3, P2, I1, H4, H7, H11)
+3. **Repeated page templates, card anatomy, and container depth** (L2, L4, V2, V6, H1, H3, H5, H8, H12)
+4. **Type hierarchy, spacing rhythm, and color roles** (T1-T15, C1-C6, L3, L5, H6, H9)
+5. **Decorative borders, gradients, glows, radii, icons, and motion** (V1-V8, M1-M4, H2, H10)
 6. **Copy cadence and redundant labels** (P1-P9)
 7. **Imagery and placeholder issues** (I1-I6)
 8. **Motion and layout violations** (M5-M8)
+
+Hospitality ordering rule: never fix H2 (pill pulse) or H10 (badge weight) before H1. Removing the pulse from a card grid that should not exist is wasted work — Stage 3 deletes the card, and the pill goes with it.
 
 After each system-level change, rescan the page. One primitive edit can clear many local symptoms.
 
@@ -276,10 +285,12 @@ Keep reports concise. Explain why a change belongs to this product. A list of re
 - [ ] Auto-fix tagging: mark which findings are mechanically fixable vs. require human judgment
 - [ ] Compute and maintain trending slop score per project across scan runs
 - [ ] Cross-session: migrate skill directory via cp -r across WSL/Windows paths; verify tracker persistence
+- [ ] Luxury hospitality scope: apply H1-H12 when the target is luxury hospitality, fine dining, or a destination venue; skip H-patterns elsewhere
+- [ ] Hospitality supersession: report the H-ID, never both H-ID and its superseded base pattern (H1/L2, H2/V12, H6/T8)
 </success_criteria>
 
 <pattern_catalog_summary>
-Total patterns: 70+
+Total patterns: 80+
 
 Visual: V1-V17 (17 patterns)
 Typography: T1-T15 (15 patterns)
@@ -291,6 +302,7 @@ Imagery: I1-I6 (6 patterns)
 General Quality: Q1-Q8 (8 patterns)
 Accessibility: A1-A8 (8 patterns)
 Design-Token / Drift Detection: D1-D6 (6 patterns)
+Hospitality / Luxury: H1-H12 (12 patterns)
 
 </pattern_catalog_summary>
 
@@ -299,6 +311,7 @@ Design-Token / Drift Detection: D1-D6 (6 patterns)
 - references/content-quality-guidelines.md — Quality standards for content evaluation
 - references/fix-order.md — Prioritized fix sequence to prevent cosmetic churn
 - references/report-template.md — Standardized report format with direction/findings structure
+- references/luxury-hospitality-protocol.md — H1-H12 luxury hospitality detection catalog: source heuristics, supersession table, exemption rules, fix-order placement
 - references/ponytail-debt-format.md — Debt doc format for cross-skill hook (optional logging)
 </references>
 
@@ -307,4 +320,5 @@ Design-Token / Drift Detection: D1-D6 (6 patterns)
 - capture — Note capture workflow
 - gsd:progress — GSD progress checking and routing
 - ponytail-debt — Technical debt tracking (cross-skill hook format)
-</related_skills>", "path": "/home/dev/.hermes/skills/anti-ai-slop-real/SKILL.md", "skill_dir": "/home/dev/.hermes/skills/anti-ai-slop-real", "verified": true, "files_modified": ["/home/dev/.hermes/skills/anti-ai-slop-real/SKILL.md"]}
+</related_skills>
+}
